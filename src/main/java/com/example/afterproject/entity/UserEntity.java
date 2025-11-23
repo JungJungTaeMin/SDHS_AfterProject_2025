@@ -13,8 +13,7 @@ import lombok.Setter;
 public class UserEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "after_users_seq")
-    @SequenceGenerator(name = "after_users_seq", sequenceName = "AFTER_USERS_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
     @Column(name = "user_id")
     private Long userId;
 

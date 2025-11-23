@@ -16,8 +16,7 @@ import java.time.LocalDate;
 public class AttendanceEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "after_attendance_seq")
-    @SequenceGenerator(name = "after_attendance_seq", sequenceName = "AFTER_ATTENDANCE_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
     @Column(name = "attendance_id")
     private Long attendanceId;
 
@@ -29,7 +28,7 @@ public class AttendanceEntity {
     private LocalDate classDate;
 
     @Column(name = "status", nullable = false)
-    private String status; // 'PRESENT', 'ABSENT', 'LATE'
+    private String status;
 
     @Builder
     public AttendanceEntity(EnrollmentEntity enrollment, LocalDate classDate, String status) {

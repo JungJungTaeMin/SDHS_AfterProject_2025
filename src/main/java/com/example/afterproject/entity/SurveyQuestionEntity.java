@@ -14,8 +14,7 @@ import lombok.Setter;
 public class SurveyQuestionEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "after_survey_questions_seq")
-    @SequenceGenerator(name = "after_survey_questions_seq", sequenceName = "AFTER_SURVEY_QUESTIONS_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
     @Column(name = "question_id")
     private Long questionId;
 
@@ -27,10 +26,10 @@ public class SurveyQuestionEntity {
     private String questionText;
 
     @Column(name = "question_type", nullable = false)
-    private String questionType; // 'MULTIPLE_CHOICE', 'TEXT'
+    private String questionType;
 
     @Lob
-    private String options; // For MULTIPLE_CHOICE, comma-separated values
+    private String options;
 
     @Builder
     public SurveyQuestionEntity(SurveyEntity survey, String questionText, String questionType, String options) {

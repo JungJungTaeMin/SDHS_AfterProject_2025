@@ -14,8 +14,7 @@ import java.time.Instant;
 @NoArgsConstructor
 public class SurveyResponseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "after_survey_responses_seq")
-    @SequenceGenerator(name = "after_survey_responses_seq", sequenceName = "AFTER_SURVEY_RESPONSES_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
     @Column(name = "response_id")
     private Long responseId;
 

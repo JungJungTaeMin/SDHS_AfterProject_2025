@@ -18,8 +18,7 @@ import java.time.Instant;
 public class EnrollmentEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "after_enrollments_seq")
-    @SequenceGenerator(name = "after_enrollments_seq", sequenceName = "AFTER_ENROLLMENTS_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
     @Column(name = "enrollment_id")
     private Long enrollmentId;
 
@@ -32,18 +31,12 @@ public class EnrollmentEntity {
     private CourseEntity course;
 
     @Column(nullable = false)
-    private String status; // 'ACTIVE', 'CANCELED'
+    private String status;
 
     @CreationTimestamp
     @Column(name = "enrolled_at", updatable = false)
     private Instant enrolledAt;
 
-    /**
-     * 빌더 패턴을 위한 생성자 추가
-     * @param student 수강생 엔티티
-     * @param course 강좌 엔티티
-     * @param status 수강 상태
-     */
     @Builder
     public EnrollmentEntity(UserEntity student, CourseEntity course, String status) {
         this.student = student;

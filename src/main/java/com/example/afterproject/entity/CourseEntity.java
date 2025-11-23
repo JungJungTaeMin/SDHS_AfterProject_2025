@@ -17,8 +17,7 @@ import java.time.Instant;
 public class CourseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "after_courses_seq")
-    @SequenceGenerator(name = "after_courses_seq", sequenceName = "AFTER_COURSES_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
     @Column(name = "course_id")
     private Long courseId;
 
@@ -37,10 +36,10 @@ public class CourseEntity {
     private String description;
 
     @Column(name = "course_days")
-    private String courseDays; // 'schedule'에서 변경
+    private String courseDays;
 
     @Column(name = "course_time")
-    private String courseTime; // 'schedule'에서 변경
+    private String courseTime;
 
     @Column(name = "location")
     private String location;
@@ -49,7 +48,7 @@ public class CourseEntity {
     private int capacity;
 
     @Column(name = "status", nullable = false)
-    private String status; // 'PENDING', 'APPROVED', 'REJECTED'
+    private String status;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -61,8 +60,8 @@ public class CourseEntity {
         this.courseName = courseName;
         this.category = category;
         this.description = description;
-        this.courseDays = courseDays; // 'schedule'에서 변경
-        this.courseTime = courseTime; // 'schedule'에서 변경
+        this.courseDays = courseDays;
+        this.courseTime = courseTime;
         this.location = location;
         this.capacity = capacity;
         this.status = status;
