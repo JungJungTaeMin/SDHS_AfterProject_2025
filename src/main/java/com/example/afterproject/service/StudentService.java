@@ -95,10 +95,13 @@ public class StudentService {
     }
 
     private boolean checkEnrollmentEligibility(Long studentId) {
+        // [FIX] 수강 이력이 없는 경우(신입생), 출석률 검사를 건너뛰고 수강 신청 허용
+        List<EnrollmentEntity> enrollments = enrollmentRepository.findByStudent_UserId(studentId);
+        if (enrollments.isEmpty()) {
+            return true;
+        }
+
         MyCoursesResponseDto myCourses = getMyCoursesAndAttendance(studentId);
-        // 수강 이력이 없는 경우(신입생 등)는 수강 신청이 가능해야 하므로 기본값을 true로 처리하거나,
-        // 비즈니스 로직에 따라 0건일 때의 처리를 결정해야 합니다.
-        // 현재 로직은 기존 코드를 유지합니다.
         return myCourses.getOverallAttendanceRate() >= MIN_ATTENDANCE_RATE;
     }
 
