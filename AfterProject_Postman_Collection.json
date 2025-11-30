@@ -1,0 +1,41 @@
+{
+    "info": {
+        "name": "AfterProject API Tests",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": "A collection for testing the AfterProject APIs."
+    },
+    "item": [
+        {
+            "name": "Create Course Survey",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"title\": \"New Course Satisfaction Survey\",\n    \"startDate\": \"2025-10-14\",\n    \"endDate\": \"2025-10-28\",\n    \"questions\": [\n        {\n            \"questionText\": \"How satisfied are you with the course content?\",\n            \"questionType\": \"MULTIPLE_CHOICE\",\n            \"options\": \"Very Satisfied,Satisfied,Neutral,Unsatisfied,Very Unsatisfied\"\n        },\n        {\n            \"questionText\": \"What did you like most about the course?\",\n            \"questionType\": \"TEXT\",\n            \"options\": null\n        }\n    ]\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:8080/api/teachers/courses/{{courseId}}/surveys",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8080",
+                    "path": [
+                        "api",
+                        "teachers",
+                        "courses",
+                        "{{courseId}}",
+                        "surveys"
+                    ]
+                },
+                "description": "Creates a new survey for a specific course."
+            }
+        }
+    ]
+}
