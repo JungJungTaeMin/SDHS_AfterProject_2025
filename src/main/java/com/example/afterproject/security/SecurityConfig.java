@@ -54,7 +54,7 @@ public CorsConfigurationSource corsConfigurationSource() {
         "http://127.0.0.1:5500",
         "https://frontend-domain.com"
     ));
-    
+
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
     configuration.setAllowCredentials(true); // 자격 증명 허용 (쿠키, 인증헤더 등)
@@ -62,6 +62,8 @@ public CorsConfigurationSource corsConfigurationSource() {
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
-    
-}
+
+
+       // 배포 테스트용 주석
+    }
 }
