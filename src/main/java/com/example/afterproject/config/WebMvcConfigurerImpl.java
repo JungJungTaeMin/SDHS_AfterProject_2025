@@ -12,5 +12,6 @@ public class WebMvcConfigurerImpl implements WebMvcConfigurer {
                 .allowedOrigins("http://localhost:8083", "https://after-school-m.vercel.app")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowCredentials(true);
+        //테스트
     }
 }
