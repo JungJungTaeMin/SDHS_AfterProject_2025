@@ -32,10 +32,27 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // NOTE: Explicitly defined role-based access for specific endpoints.
+                        // If 403 errors persist, ensure:
+                        // 1. Users have the correct roles assigned (e.g., ADMIN, TEACHER, STUDENT).
+                        // 2. JWT tokens correctly carry these role claims.
+                        // 3. Frontend sends valid JWT tokens with requests.
+                        // Publicly accessible endpoints
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+                        // Admin specific endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/admin/notices").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/admin/surveys").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Teacher specific endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/teachers/courses").hasRole("TEACHER")
                         .requestMatchers("/api/teachers/**").hasRole("TEACHER")
+
+                        // Student specific endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/students/courses/{courseId}/enroll").hasRole("STUDENT")
                         .requestMatchers("/api/students/**").hasRole("STUDENT")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
