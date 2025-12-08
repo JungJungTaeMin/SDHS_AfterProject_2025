@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>관리자 대시보드</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Work+Sans:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link rel="stylesheet" href="./css/admin.css"/>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="logo-area">
+          <span class="material-symbols-outlined logo-icon">school</span>
+          <div>
+            <h1>방과후 학교</h1>
+            <p>관리자 포털</p>
+          </div>
+        </div>
+        <nav class="menu">
+          <a href="#" class="menu-item active" data-target="users">
+            <span class="material-symbols-outlined">group</span><span>사용자 관리</span>
+          </a>
+          <a href="#" class="menu-item" data-target="courses">
+            <span class="material-symbols-outlined">checklist</span><span>강좌 운영</span>
+          </a>
+          <a href="#" class="menu-item" data-target="comms">
+            <span class="material-symbols-outlined">campaign</span><span>공지·설문</span>
+          </a>
+        </nav>
+      </div>
+      <div class="logout">
+        <a href="#" id="btnLogout"><span class="material-symbols-outlined">logout</span><span>로그아웃</span></a>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="header">
+        <h1>관리자 대시보드</h1>
+        <div class="admin-profile">
+          <div class="avatar">관</div>
+          <div class="profile-meta">
+            <strong id="adminName">관리자</strong>
+            <span id="adminEmail" class="muted">admin@example.com</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 사용자 통합 관리 -->
+      <section class="page-section" id="users">
+        <div class="section-head">
+          <h2>사용자 통합 관리</h2>
+          <div class="hint">전체 사용자 검색/역할변경/삭제</div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-row">
+            <input id="userSearch" class="input" placeholder="이름 · 이메일 검색">
+            <select id="roleFilter" class="select">
+              <option value="">모든 역할</option>
+              <option value="학생">학생</option>
+              <option value="교사">교사</option>
+              <option value="관리자">관리자</option>
+            </select>
+            <button id="btnAddUser" class="primary">신규 사용자</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>이름</th><th>이메일</th><th>역할</th><th>상태</th><th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="userTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 강좌 운영 관리 -->
+      <section class="page-section hidden mt15" id="courses">
+        <div class="section-head">
+          <h2>강좌 운영 관리</h2>
+          <div class="hint">개설 승인/반려 · 전체 강좌 모니터링 · 강제 배정/취소</div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="pending">승인 대기</button>
+          <button class="tab" data-tab="all">전체 강좌</button>
+          <button class="tab" data-tab="assign">수강생 강제 배정/취소</button>
+        </div>
+
+        <!-- 승인 대기 -->
+        <div id="tab_pending" class="tab-panel">
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>강좌명</th><th>교사</th><th>신청일</th><th>상태</th><th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 전체 강좌 -->
+        <div id="tab_all" class="tab-panel hidden">
+          <div class="toolbar">
+            <div class="toolbar-row">
+              <input id="courseSearch" class="input" placeholder="강좌명 · 교사 검색">
+              <select id="statusFilter" class="select">
+                <option value="">모든 상태</option>
+                <option value="approved">승인</option>
+                <option value="pending">대기</option>
+                <option value="rejected">반려</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>강좌명</th><th>교사</th><th>정원</th><th>신청/정원</th><th>상태</th>
+                </tr>
+              </thead>
+              <tbody id="allCourseTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 강제 배정/취소 -->
+        <div id="tab_assign" class="tab-panel hidden">
+          <div class="assign-grid">
+            <div class="card">
+              <h3>학생 선택</h3>
+              <input id="assignStudentSearch" class="input" placeholder="이름 · 이메일 검색">
+              <div class="list" id="assignStudentList"></div>
+            </div>
+            <div class="card">
+              <h3>강좌 선택</h3>
+              <input id="assignCourseSearch" class="input" placeholder="강좌명 · 교사 검색">
+              <div class="list" id="assignCourseList"></div>
+            </div>
+            <div class="card">
+              <h3>작업</h3>
+              <div class="kv">
+                <span>선택 학생</span><strong id="chosenStudent">-</strong>
+              </div>
+              <div class="kv">
+                <span>선택 강좌</span><strong id="chosenCourse">-</strong>
+              </div>
+              <div class="flex gap">
+                <button id="btnForceEnroll" class="primary">강제 배정</button>
+                <button id="btnForceCancel" class="ghost">강제 취소</button>
+              </div>
+              <div class="hint small">학생의 신청내역(ENROLLMENTS)에 직접 반영됩니다.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 시스템 소통 관리 -->
+      <section class="page-section hidden mt15" id="comms">
+        <div class="section-head">
+          <h2>공지 · 설문 관리</h2>
+          <div class="hint">전체 사용자 대상 공지, 전사 설문 생성/통계</div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="notice">공지사항</button>
+          <button class="tab" data-tab="survey">설문조사</button>
+        </div>
+
+        <!-- 공지 -->
+        <div id="tab_notice" class="tab-panel">
+          <div class="grid-2">
+            <div class="card">
+              <h3>공지 작성</h3>
+              <input id="noticeTitle" class="input" placeholder="공지 제목">
+              <textarea id="noticeBody" class="textarea" placeholder="공지 내용"></textarea>
+              <div class="flex gap">
+                <button id="btnNoticeSave" class="primary">게시</button>
+                <button id="btnNoticeReset" class="ghost">초기화</button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>공지 목록</h3>
+              <div id="noticeList" class="list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 설문 -->
+        <div id="tab_survey" class="tab-panel hidden">
+          <div class="grid-2">
+            <div class="card">
+              <h3>설문 생성</h3>
+              <input id="surveyTitle" class="input" placeholder="설문 제목">
+              <input id="surveyPeriod" class="input" placeholder="기간 예) 2025-10-01 ~ 2025-10-20">
+              <div id="questionWrap" class="q-wrap"></div>
+              <div class="flex gap">
+                <button id="btnAddTextQ" class="ghost">주관식 추가</button>
+                <button id="btnAddSingleQ" class="ghost">객관식 추가</button>
+              </div>
+              <div class="flex gap mt">
+                <button id="btnSurveySave" class="primary">설문 게시</button>
+                <button id="btnSurveyReset" class="ghost">초기화</button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>설문 목록/통계</h3>
+              <div id="surveyList" class="list"></div>
+              <div id="surveyStats" class="stats-box hidden"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./js/api-config.js"></script>
+  <script src="./js/admin.js"></script>
+</body>
+</html>

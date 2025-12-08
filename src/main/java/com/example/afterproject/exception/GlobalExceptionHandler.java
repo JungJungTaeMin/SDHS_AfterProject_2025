@@ -67,5 +67,6 @@ public class GlobalExceptionHandler {
         errorResponse.put("message", "The requested URL was not found on this server.");
         errorResponse.put("path", ex.getResourcePath());
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+
     }
 }

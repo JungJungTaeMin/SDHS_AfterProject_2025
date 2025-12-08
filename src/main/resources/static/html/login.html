@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./css/login.css"/>
+  <title>방과후 관리 시스템 - 로그인</title>
+</head>
+<body>
+  <div class="container">
+    <main class="login-box">
+      <div class="title-wrap">
+        <div class="logo">
+          <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path d="M36.7273 44C33.9891 44 31.6043 39.8386 30.3636 33.69C29.123 39.8386 26.7382 44 24 44C21.2618 44 18.877 39.8386 17.6364 33.69C16.3957 39.8386 14.0109 44 11.2727 44C7.25611 44 4 35.0457 4 24C4 12.9543 7.25611 4 11.2727 4C14.0109 4 16.3957 8.16144 17.6364 14.31C18.877 8.16144 21.2618 4 24 4C26.7382 4 29.123 8.16144 30.3636 14.31C31.6043 8.16144 33.9891 4 36.7273 4C40.7439 4 44 12.9543 44 24C44 35.0457 40.7439 44 36.7273 44Z" fill="currentColor"></path>
+          </svg>
+        </div>
+        <h1>방과후 관리 시스템</h1>
+        <p>학생과 교사를 위한 스마트한 선택! 시작해 보세요.</p>
+      </div>
+
+      <div class="tab-buttons">
+        <button class="active" data-tab="login">로그인</button>
+        <button data-tab="signup">회원가입</button>
+      </div>
+
+      <form id="login-form" class="form active">
+        <div class="input-group">
+          <span class="material-symbols-outlined"></span>
+          <input type="text" id="login-id" placeholder="아이디" />
+        </div>
+        <div class="input-group">
+          <span class="material-symbols-outlined"></span>
+          <input type="password" id="login-password" placeholder="비밀번호" />
+        </div>
+        <div class="options">
+          <label><input type="checkbox" id="remember-me" /> 로그인 상태 유지</label>
+          <a href="#">비밀번호 찾기</a>
+        </div>
+        <button type="submit" class="login-btn">로그인</button>
+      </form>
+
+      <form id="signup-form" class="form">
+        <div class="input-group">
+          <span class="material-symbols-outlined"></span>
+          <input type="text" id="signup-id" placeholder="아이디" />
+        </div>
+        <div class="input-group">
+          <span class="material-symbols-outlined"></span>
+          <input type="password" id="signup-password" placeholder="비밀번호" />
+        </div>
+        <div class="input-group">
+          <span class="material-symbols-outlined"></span>
+          <input type="password" id="signup-password2" placeholder="비밀번호 확인" />
+        </div>
+        <div class="input-group">
+          <span class="material-symbols-outlined"></span>
+          <input type="email" id="signup-email" placeholder="이메일" />
+        </div>
+        <button type="submit" class="login-btn">회원가입</button>
+      </form>
+
+      <div class="divider">
+        <span>간편 로그인</span>
+      </div>
+
+      <div class="social-login">
+        <span>
+          <button onclick="googleLogin()">Google 계정</button>
+        </span>
+      </div>
+
+      <p class="terms">
+        회원가입은 <a href="#">서비스 이용약관</a>과 <a href="#">개인정보처리방침</a>에 동의하는 것을 의미합니다.
+      </p>
+    </main>
+  </div>
+
+  <script src="./js/api-config.js"></script>
+  <script src="./js/login.js"></script>
+</body>
+</html>

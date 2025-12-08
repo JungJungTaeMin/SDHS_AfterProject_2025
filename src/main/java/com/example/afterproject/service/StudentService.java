@@ -94,7 +94,11 @@ public class StudentService {
         enrollmentRepository.save(enrollment);
     }
 
+    // [수정] 신입생 혜택 로직(isEmpty 체크) 완전 삭제
     private boolean checkEnrollmentEligibility(Long studentId) {
+        // 기존에 있었던 "수강 이력이 없으면 true 반환" 로직을 제거했습니다.
+        // 따라서 수강 이력이 아예 없는 경우(신입생 등)는 attendanceRate가 0.0이 되어
+        // 60.0보다 작으므로 false(신청 불가)가 반환됩니다.
 
         MyCoursesResponseDto myCourses = getMyCoursesAndAttendance(studentId);
         return myCourses.getOverallAttendanceRate() >= MIN_ATTENDANCE_RATE;

@@ -52,5 +52,7 @@ public class AuthService {
         user.setStudentIdNo(requestDto.getStudentIdNo());
 
         userRepository.save(user);
+
+
     }
 }

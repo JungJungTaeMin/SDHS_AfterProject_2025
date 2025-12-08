@@ -156,5 +156,6 @@ public class AdminController {
         Long adminId = 1L;
         SurveyResponseDto survey = adminService.createGlobalSurvey(adminId, surveyCreateDto);
         return ResponseEntity.status(201).body(survey);
+
     }
 }
