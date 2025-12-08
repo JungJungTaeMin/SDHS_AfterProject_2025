@@ -28,7 +28,8 @@ import java.util.stream.Stream;
 @Transactional(readOnly = true)
 public class StudentService {
 
-    private static final double MIN_ATTENDANCE_RATE = 70.0;
+    // [수정] 출석률 제한 조건을 60%로 완화
+    private static final double MIN_ATTENDANCE_RATE = 60.0;
 
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
@@ -63,9 +64,9 @@ public class StudentService {
 
     @Transactional
     public void enrollInCourse(Long studentId, Long courseId) {
-        // 1. 출석률 자격 확인
+        // 1. 출석률 자격 확인 (신입생 혜택 없음 -> 이력이 없으면 신청 불가)
         if (!checkEnrollmentEligibility(studentId)) {
-            throw new IllegalStateException("출석률 미달로 수강 신청을 할 수 없습니다.");
+            throw new IllegalStateException("이전 학기 출석률이 60% 미만(또는 수강 이력 없음)이어 수강 신청을 할 수 없습니다.");
         }
 
         UserEntity student = userRepository.findById(studentId)
@@ -78,10 +79,9 @@ public class StudentService {
             throw new IllegalStateException("이미 수강 신청된 강좌입니다.");
         }
 
-        // 3. 정원 초과 확인 (수정됨: currentCount >= capacity 일 때 에러)
+        // 3. 정원 초과 확인
         long currentEnrollmentCount = enrollmentRepository.countByCourse_CourseIdAndStatus(courseId, "ACTIVE");
 
-        // [FIX] 기존 로직 오류 수정: 인원이 정원보다 같거나 많으면 신청 불가
         if (currentEnrollmentCount >= course.getCapacity()) {
             throw new IllegalStateException("수강 정원이 초과되어 신청할 수 없습니다.");
         }
@@ -95,11 +95,6 @@ public class StudentService {
     }
 
     private boolean checkEnrollmentEligibility(Long studentId) {
-        // [FIX] 수강 이력이 없는 경우(신입생), 출석률 검사를 건너뛰고 수강 신청 허용
-        List<EnrollmentEntity> enrollments = enrollmentRepository.findByStudent_UserId(studentId);
-        if (enrollments.isEmpty()) {
-            return true;
-        }
 
         MyCoursesResponseDto myCourses = getMyCoursesAndAttendance(studentId);
         return myCourses.getOverallAttendanceRate() >= MIN_ATTENDANCE_RATE;
@@ -149,18 +144,15 @@ public class StudentService {
         SurveyEntity survey = surveyRepository.findById(surveyId)
                 .orElseThrow(() -> new EntityNotFoundException("Survey not found with id: " + surveyId));
 
-        // Check if survey is active
         LocalDate today = LocalDate.now();
         if (survey.getStartDate().isAfter(today) || survey.getEndDate().isBefore(today)) {
             throw new IllegalStateException("This survey is not active.");
         }
 
-        // Check if student has already submitted
         if (surveyResponseRepository.existsByQuestion_Survey_SurveyIdAndRespondent_UserId(surveyId, studentId)) {
             throw new IllegalStateException("You have already submitted this survey.");
         }
 
-        // Check if the survey is available to the student (global or enrolled course)
         boolean isAvailable = false;
         if (survey.getCourse() == null) {
             isAvailable = true; // Global survey
@@ -183,10 +175,9 @@ public class StudentService {
         UserEntity student = userRepository.findById(studentId)
                 .orElseThrow(() -> new EntityNotFoundException("Student not found with id: " + studentId));
 
-        // Run all the checks from getSurveyForResponse again to ensure integrity
         getSurveyForResponse(studentId, surveyId);
 
-        SurveyEntity survey = surveyRepository.findById(surveyId).get(); // Already checked in getSurveyForResponse
+        SurveyEntity survey = surveyRepository.findById(surveyId).get();
 
         List<SurveyResponseEntity> responses = requestDto.getResponses().stream()
                 .map(resDto -> {

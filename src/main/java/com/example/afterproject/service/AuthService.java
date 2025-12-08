@@ -19,7 +19,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    // 로그인 (기존 코드)
+    // 로그인
     @Transactional(readOnly = true)
     public TokenResponseDto login(LoginRequestDto requestDto) {
         UserEntity user = userRepository.findByEmail(requestDto.getEmail())
@@ -30,21 +30,20 @@ public class AuthService {
         }
 
         String token = jwtTokenProvider.createToken(user.getEmail(), user.getRole());
-        return new TokenResponseDto(token, user.getRole());
+
+        // [수정] 생성자에 user.getName()을 추가하여 이름도 함께 반환
+        return new TokenResponseDto(token, user.getRole(), user.getName());
     }
 
-    // ▼▼▼ 회원가입 (새로 추가됨) ▼▼▼
+    // 회원가입 (기존 코드 유지)
     @Transactional
     public void signup(SignupRequestDto requestDto) {
-        // 1. 이메일 중복 검사
         if (userRepository.findByEmail(requestDto.getEmail()).isPresent()) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
-        // 2. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
 
-        // 3. 유저 엔티티 생성
         UserEntity user = new UserEntity();
         user.setEmail(requestDto.getEmail());
         user.setPassword(encodedPassword);
@@ -52,7 +51,6 @@ public class AuthService {
         user.setRole(requestDto.getRole());
         user.setStudentIdNo(requestDto.getStudentIdNo());
 
-        // 4. DB 저장
         userRepository.save(user);
     }
 }
