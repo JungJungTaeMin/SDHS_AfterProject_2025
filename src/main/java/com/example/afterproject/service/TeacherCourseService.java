@@ -148,6 +148,10 @@ public class TeacherCourseService {
 
         LocalDate classDate = updateDto.getClassDate();
 
+        // 디버깅용 로그
+        System.out.println("출석 저장 요청 받음: 날짜 = " + classDate);
+        System.out.println("학생 수 = " + updateDto.getStudents().size());
+
         for (AttendanceUpdateDto.StudentAttendanceDto studentDto : updateDto.getStudents()) {
             EnrollmentEntity enrollment = enrollmentRepository.findById(studentDto.getEnrollmentId())
                     .orElseThrow(() -> new EntityNotFoundException("Enrollment not found with id: " + studentDto.getEnrollmentId()));
@@ -169,7 +173,7 @@ public class TeacherCourseService {
     public List<NoticeDto> getCourseNotices(Long teacherId, Long courseId) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
                 .orElseThrow(() -> new SecurityException("You do not have permission to view this course's notices."));
-        
+
         List<NoticeEntity> notices = noticeRepository.findByCourse_CourseId(courseId);
         return notices.stream().map(NoticeDto::new).collect(Collectors.toList());
     }
@@ -224,8 +228,10 @@ public class TeacherCourseService {
                 .orElseThrow(() -> new SecurityException("You do not have permission to view this course's surveys."));
 
         List<SurveyEntity> surveys = surveyRepository.findByCourse_CourseId(courseId);
+
+        // [수정] SurveyListDto 생성자에 false 추가
         return surveys.stream()
-                .map(SurveyListDto::new)
+                .map(survey -> new SurveyListDto(survey, false))
                 .collect(Collectors.toList());
     }
 
@@ -262,6 +268,7 @@ public class TeacherCourseService {
 
         SurveyEntity savedSurvey = surveyRepository.save(survey);
 
-        return new SurveyListDto(savedSurvey);
+        // [수정] SurveyListDto 생성자에 false 추가
+        return new SurveyListDto(savedSurvey, false);
     }
 }

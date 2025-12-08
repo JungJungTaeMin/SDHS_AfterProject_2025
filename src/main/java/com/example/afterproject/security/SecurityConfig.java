@@ -3,6 +3,7 @@ package com.example.afterproject.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // [추가] 오류 해결을 위한 import
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -32,27 +33,19 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // NOTE: Explicitly defined role-based access for specific endpoints.
-                        // If 403 errors persist, ensure:
-                        // 1. Users have the correct roles assigned (e.g., ADMIN, TEACHER, STUDENT).
-                        // 2. JWT tokens correctly carry these role claims.
-                        // 3. Frontend sends valid JWT tokens with requests.
-                        // Publicly accessible endpoints
+                        // 1. 인증 없이 접근 허용
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // Admin specific endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/admin/notices").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/admin/surveys").hasRole("ADMIN")
+                        // 2. 관리자 전용 권한
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // Teacher specific endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/teachers/courses").hasRole("TEACHER")
+                        // 3. 교사 전용 권한
                         .requestMatchers("/api/teachers/**").hasRole("TEACHER")
 
-                        // Student specific endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/students/courses/{courseId}/enroll").hasRole("STUDENT")
+                        // 4. 학생 전용 권한
                         .requestMatchers("/api/students/**").hasRole("STUDENT")
 
+                        // 5. 그 외 모든 요청은 인증만 되면 접근 가능
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
@@ -68,8 +61,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 프론트엔드 도메인 + 로컬호스트 허용
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://your-frontend-domain.com"));
+        // 프론트엔드 도메인 허용
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://localhost:5500",
+                "http://127.0.0.1:5500",
+                "https://frontend-domain.com",
+                "https://sdhsafterproject2025-production.up.railway.app"
+        ));
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
