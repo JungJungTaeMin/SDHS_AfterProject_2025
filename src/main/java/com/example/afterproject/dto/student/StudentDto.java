@@ -6,10 +6,9 @@ import lombok.Getter;
 
 import java.util.List;
 
-// 학생 기능 관련 DTO 모음
 public class StudentDto {
 
-    // 2.1. 강좌 목록 조회 응답 DTO
+    // 2.1. 강좌 목록 조회 응답 DTO (기존 유지)
     @Getter
     public static class CourseListResponseDto {
         private final Long courseId;
@@ -19,7 +18,7 @@ public class StudentDto {
         private final String courseTime;
         private final long currentEnrollment;
         private final int capacity;
-        private final boolean isEnrolled; // 본인 수강 신청 여부
+        private final boolean isEnrolled;
 
         public CourseListResponseDto(CourseEntity course, long currentEnrollment, boolean isEnrolled) {
             this.courseId = course.getCourseId();
@@ -33,7 +32,7 @@ public class StudentDto {
         }
     }
 
-    // 2.2. 강좌 상세 정보 응답 DTO
+    // 2.2. 강좌 상세 정보 응답 DTO (기존 유지)
     @Getter
     public static class CourseDetailResponseDto {
         private final Long courseId;
@@ -47,7 +46,7 @@ public class StudentDto {
         private final long currentEnrollment;
         private final int capacity;
         private final boolean isEnrolled;
-        private final boolean canEnroll; // 출석률 조건 등 수강 가능 여부
+        private final boolean canEnroll;
 
         public CourseDetailResponseDto(CourseEntity course, long currentEnrollment, boolean isEnrolled, boolean canEnroll) {
             this.courseId = course.getCourseId();
@@ -69,7 +68,7 @@ public class StudentDto {
     @Getter
     public static class MyCoursesResponseDto {
         private final List<MyCourseDto> courses;
-        private final double overallAttendanceRate; // 전체 출석률
+        private final double overallAttendanceRate;
 
         public MyCoursesResponseDto(List<MyCourseDto> courses) {
             this.courses = courses;
@@ -84,6 +83,9 @@ public class StudentDto {
 
         @Getter
         public static class MyCourseDto {
+            // [추가] 취소 요청을 위해 courseId 필드 필수 추가!
+            private final Long courseId;
+
             private final String courseName;
             private final String teacherName;
             private final String status;
@@ -93,6 +95,9 @@ public class StudentDto {
             private final long lateCount;
 
             public MyCourseDto(EnrollmentEntity enrollment, List<String> attendanceRecords) {
+                // [추가] 엔티티에서 ID 꺼내오기
+                this.courseId = enrollment.getCourse().getCourseId();
+
                 this.courseName = enrollment.getCourse().getCourseName();
                 this.teacherName = enrollment.getCourse().getTeacher().getName();
                 this.status = enrollment.getStatus();
