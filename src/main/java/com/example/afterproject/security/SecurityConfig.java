@@ -67,7 +67,8 @@ public class SecurityConfig {
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
                 "https://after-school-m.vercel.app",
-                "https://sdhsafterproject2025-production.up.railway.app"
+                "https://sdhsafterproject2025-production.up.railway.app",
+                "https://after-school-nn11tn7vr-tlscksgurs-projects.vercel.app"
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
