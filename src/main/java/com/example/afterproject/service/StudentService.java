@@ -28,7 +28,6 @@ import java.util.stream.Stream;
 @Transactional(readOnly = true)
 public class StudentService {
 
-    // 출석률 제한 60%
     private static final double MIN_ATTENDANCE_RATE = 60.0;
 
     private final CourseRepository courseRepository;
@@ -55,7 +54,7 @@ public class StudentService {
         CourseEntity course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("강좌를 찾을 수 없습니다."));
 
-        boolean canEnroll = checkEnrollmentEligibility(studentId); // 출석률 조건 확인
+        boolean canEnroll = checkEnrollmentEligibility(studentId);
         boolean isEnrolled = enrollmentRepository.findByStudent_UserIdAndCourse_CourseId(studentId, courseId).isPresent();
         long currentEnrollmentCount = enrollmentRepository.countByCourse_CourseIdAndStatus(courseId, "ACTIVE");
 
@@ -94,16 +93,28 @@ public class StudentService {
         enrollmentRepository.save(enrollment);
     }
 
-    // [수정] 수강 이력이 없는 경우(신입생) true를 반환하도록 복구
+    // [핵심 수정] 신입생 연속 신청 허용 로직
     private boolean checkEnrollmentEligibility(Long studentId) {
         List<EnrollmentEntity> enrollments = enrollmentRepository.findByStudent_UserId(studentId);
 
-        // 이력이 아예 없으면 -> 최초 진입자이므로 수강 허용
+        // 1. 수강 이력이 아예 없으면(완전 신입) 통과
         if (enrollments.isEmpty()) {
             return true;
         }
 
         MyCoursesResponseDto myCourses = getMyCoursesAndAttendance(studentId);
+
+        // 2. 수강 이력은 있지만, "실제 출석/결석 기록(수업 진행)"이 하나라도 있는지 확인
+        // (방금 신청해서 수업 기록이 0건인 강좌들은 출석률 계산에서 제외하기 위함)
+        boolean hasAnyClassRecords = myCourses.getCourses().stream()
+                .anyMatch(c -> (c.getPresentCount() + c.getAbsentCount() + c.getLateCount()) > 0);
+
+        // 실제 진행된 수업이 하나도 없다면 -> 이제 막 여러 개를 신청 중인 상태로 간주 -> 통과
+        if (!hasAnyClassRecords) {
+            return true;
+        }
+
+        // 3. 실제 수업 기록이 있다면 정식으로 출석률 계산 (60% 이상)
         return myCourses.getOverallAttendanceRate() >= MIN_ATTENDANCE_RATE;
     }
 
