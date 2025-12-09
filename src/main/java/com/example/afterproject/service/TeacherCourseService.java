@@ -1,37 +1,16 @@
 package com.example.afterproject.service;
 
-import com.example.afterproject.dto.AttendanceDto;
-import com.example.afterproject.dto.AttendanceUpdateDto;
-import com.example.afterproject.dto.CourseCreateDto;
-import com.example.afterproject.dto.CourseDto;
-import com.example.afterproject.dto.CourseUpdateDto;
-import com.example.afterproject.dto.EnrolledStudentDto;
-import com.example.afterproject.dto.NoticeCreateDto;
-import com.example.afterproject.dto.NoticeDto;
-import com.example.afterproject.dto.SurveyCreateDto;
-import com.example.afterproject.dto.SurveyListDto;
-import com.example.afterproject.entity.AttendanceEntity;
-import com.example.afterproject.entity.CourseEntity;
-import com.example.afterproject.entity.EnrollmentEntity;
-import com.example.afterproject.entity.NoticeEntity;
-import com.example.afterproject.entity.SurveyEntity;
-import com.example.afterproject.entity.SurveyQuestionEntity;
-import com.example.afterproject.entity.UserEntity;
-import com.example.afterproject.repository.AttendanceRepository;
-import com.example.afterproject.repository.CourseRepository;
-import com.example.afterproject.repository.EnrollmentRepository;
-import com.example.afterproject.repository.NoticeRepository;
-import com.example.afterproject.repository.SurveyRepository;
-import com.example.afterproject.repository.UserRepository;
+import com.example.afterproject.dto.*;
+import com.example.afterproject.entity.*;
+import com.example.afterproject.repository.*;
 import jakarta.persistence.EntityNotFoundException;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -45,10 +24,35 @@ public class TeacherCourseService {
     private final NoticeRepository noticeRepository;
     private final AttendanceRepository attendanceRepository;
 
+    // 허용된 강의실 목록
+    private static final List<String> ALLOWED_ROOMS = Arrays.asList(
+            "206", "207", "301", "302", "305", "306", "307", "308", "309", "강당", "406"
+    );
+
+    /**
+     * 1.1. 강좌 개설 신청 (강의실 및 시간 중복 검사 추가)
+     */
     @Transactional
     public CourseDto createCourse(Long teacherId, CourseCreateDto createDto) {
         UserEntity teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new EntityNotFoundException("Teacher not found with id: " + teacherId));
+
+        // 1. 강의실 유효성 검사
+        if (!ALLOWED_ROOMS.contains(createDto.getLocation())) {
+            throw new IllegalArgumentException("허용되지 않은 강의실입니다. 지정된 교실만 선택해주세요.");
+        }
+
+        // 2. 중복 예약 검사 (같은 날, 같은 시간, 같은 장소)
+        // 반려(REJECTED)된 강좌는 제외하고, 승인(APPROVED)되거나 대기(PENDING) 중인 강좌와 겹치는지 확인
+        List<CourseEntity> existingCourses = courseRepository.findByLocationAndStatusNot(createDto.getLocation(), "REJECTED");
+
+        for (CourseEntity existing : existingCourses) {
+            // 시간이 겹치고 & 요일이 겹치면 -> 중복!
+            if (isTimeOverlap(existing.getCourseTime(), createDto.getCourseTime()) &&
+                    isDayOverlap(existing.getCourseDays(), createDto.getCourseDays())) {
+                throw new IllegalStateException("해당 강의실은 이미 그 시간에 예약되어 있습니다: " + existing.getCourseName());
+            }
+        }
 
         CourseEntity course = CourseEntity.builder()
                 .teacher(teacher)
@@ -59,13 +63,30 @@ public class TeacherCourseService {
                 .courseTime(createDto.getCourseTime())
                 .location(createDto.getLocation())
                 .capacity(createDto.getCapacity())
-                .status("PENDING") // Default status
+                .status("PENDING") // 초기 상태는 대기
                 .build();
 
         CourseEntity savedCourse = courseRepository.save(course);
         return new CourseDto(savedCourse);
     }
 
+    // [헬퍼 메서드 1] 시간 중복 체크 (단순 문자열 일치로 체크, 필요시 파싱 로직 고도화 가능)
+    private boolean isTimeOverlap(String time1, String time2) {
+        return time1.equals(time2);
+    }
+
+    // [헬퍼 메서드 2] 요일 중복 체크 (교집합 확인)
+    private boolean isDayOverlap(String days1, String days2) {
+        // "월,수" vs "수,금" -> "수"가 겹치므로 true
+        if (days1 == null || days2 == null) return false;
+        List<String> d1 = Arrays.asList(days1.split(","));
+        List<String> d2 = Arrays.asList(days2.split(","));
+        return !Collections.disjoint(d1, d2); // 공통 요소가 있으면 true
+    }
+
+    /**
+     * 1.2. 담당 강좌 목록 조회
+     */
     @Transactional(readOnly = true)
     public List<CourseDto> getMyCourses(Long teacherId) {
         if (!userRepository.existsById(teacherId)) {
@@ -77,15 +98,20 @@ public class TeacherCourseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 1.3. 강좌 정보 수정 (본인 강좌 및 상태 확인)
+     */
     @Transactional
     public CourseDto updateCourse(Long teacherId, Long courseId, CourseUpdateDto updateDto) {
         CourseEntity course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + courseId));
 
+        // 소유권 확인
         if (!course.getTeacher().getUserId().equals(teacherId)) {
             throw new SecurityException("You do not have permission to update this course.");
         }
 
+        // 상태 확인 (대기 또는 반려 상태만 수정 가능)
         if (!Arrays.asList("PENDING", "REJECTED").contains(course.getStatus())) {
             throw new IllegalStateException("Only courses with PENDING or REJECTED status can be updated.");
         }
@@ -98,6 +124,7 @@ public class TeacherCourseService {
         course.setLocation(updateDto.getLocation());
         course.setCapacity(updateDto.getCapacity());
 
+        // 반려된 강좌를 수정하면 다시 대기 상태로 변경
         if ("REJECTED".equals(course.getStatus())) {
             course.setStatus("PENDING");
         }
@@ -106,6 +133,9 @@ public class TeacherCourseService {
         return new CourseDto(updatedCourse);
     }
 
+    /**
+     * [탭 1] 수강생 목록 조회
+     */
     @Transactional(readOnly = true)
     public List<EnrolledStudentDto> getEnrolledStudents(Long teacherId, Long courseId) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -118,6 +148,9 @@ public class TeacherCourseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [탭 2] 출결 관리 - 조회
+     */
     @Transactional(readOnly = true)
     public List<AttendanceDto> getAttendanceByDate(Long teacherId, Long courseId, LocalDate classDate) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -141,16 +174,15 @@ public class TeacherCourseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [탭 2] 출결 관리 - 기록
+     */
     @Transactional
     public void recordAttendance(Long teacherId, Long courseId, AttendanceUpdateDto updateDto) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
                 .orElseThrow(() -> new SecurityException("You do not have permission to record attendance for this course."));
 
         LocalDate classDate = updateDto.getClassDate();
-
-        // 디버깅용 로그
-        System.out.println("출석 저장 요청 받음: 날짜 = " + classDate);
-        System.out.println("학생 수 = " + updateDto.getStudents().size());
 
         for (AttendanceUpdateDto.StudentAttendanceDto studentDto : updateDto.getStudents()) {
             EnrollmentEntity enrollment = enrollmentRepository.findById(studentDto.getEnrollmentId())
@@ -169,6 +201,9 @@ public class TeacherCourseService {
         }
     }
 
+    /**
+     * [탭 3] 공지사항 목록
+     */
     @Transactional(readOnly = true)
     public List<NoticeDto> getCourseNotices(Long teacherId, Long courseId) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -178,6 +213,9 @@ public class TeacherCourseService {
         return notices.stream().map(NoticeDto::new).collect(Collectors.toList());
     }
 
+    /**
+     * [탭 3] 공지사항 생성
+     */
     @Transactional
     public NoticeDto createCourseNotice(Long teacherId, Long courseId, NoticeCreateDto createDto) {
         UserEntity teacher = userRepository.findById(teacherId)
@@ -196,6 +234,9 @@ public class TeacherCourseService {
         return new NoticeDto(savedNotice);
     }
 
+    /**
+     * [탭 3] 공지사항 수정
+     */
     @Transactional
     public NoticeDto updateCourseNotice(Long teacherId, Long courseId, Long noticeId, NoticeCreateDto updateDto) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -211,6 +252,9 @@ public class TeacherCourseService {
         return new NoticeDto(updatedNotice);
     }
 
+    /**
+     * [탭 3] 공지사항 삭제
+     */
     @Transactional
     public void deleteCourseNotice(Long teacherId, Long courseId, Long noticeId) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -222,6 +266,9 @@ public class TeacherCourseService {
         noticeRepository.delete(notice);
     }
 
+    /**
+     * [탭 4] 설문조사 목록
+     */
     @Transactional(readOnly = true)
     public List<SurveyListDto> getCourseSurveys(Long teacherId, Long courseId) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -229,12 +276,15 @@ public class TeacherCourseService {
 
         List<SurveyEntity> surveys = surveyRepository.findByCourse_CourseId(courseId);
 
-        // [수정] SurveyListDto 생성자에 false 추가
+        // SurveyListDto 생성자 수정 (isSubmitted = false)
         return surveys.stream()
                 .map(survey -> new SurveyListDto(survey, false))
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [탭 4] 설문조사 생성
+     */
     @Transactional
     public SurveyListDto createCourseSurvey(Long teacherId, Long courseId, SurveyCreateDto createDto) {
         UserEntity teacher = userRepository.findById(teacherId)
@@ -268,7 +318,7 @@ public class TeacherCourseService {
 
         SurveyEntity savedSurvey = surveyRepository.save(survey);
 
-        // [수정] SurveyListDto 생성자에 false 추가
+        // SurveyListDto 생성자 수정 (isSubmitted = false)
         return new SurveyListDto(savedSurvey, false);
     }
 }
