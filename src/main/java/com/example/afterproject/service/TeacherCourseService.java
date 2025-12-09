@@ -30,7 +30,7 @@ public class TeacherCourseService {
     );
 
     /**
-     * 1.1. 강좌 개설 신청 (강의실 및 시간 중복 검사 추가)
+     * 1.1. 강좌 개설 신청
      */
     @Transactional
     public CourseDto createCourse(Long teacherId, CourseCreateDto createDto) {
@@ -42,12 +42,10 @@ public class TeacherCourseService {
             throw new IllegalArgumentException("허용되지 않은 강의실입니다. 지정된 교실만 선택해주세요.");
         }
 
-        // 2. 중복 예약 검사 (같은 날, 같은 시간, 같은 장소)
-        // 반려(REJECTED)된 강좌는 제외하고, 승인(APPROVED)되거나 대기(PENDING) 중인 강좌와 겹치는지 확인
+        // 2. 중복 예약 검사
         List<CourseEntity> existingCourses = courseRepository.findByLocationAndStatusNot(createDto.getLocation(), "REJECTED");
 
         for (CourseEntity existing : existingCourses) {
-            // 시간이 겹치고 & 요일이 겹치면 -> 중복!
             if (isTimeOverlap(existing.getCourseTime(), createDto.getCourseTime()) &&
                     isDayOverlap(existing.getCourseDays(), createDto.getCourseDays())) {
                 throw new IllegalStateException("해당 강의실은 이미 그 시간에 예약되어 있습니다: " + existing.getCourseName());
@@ -63,29 +61,26 @@ public class TeacherCourseService {
                 .courseTime(createDto.getCourseTime())
                 .location(createDto.getLocation())
                 .capacity(createDto.getCapacity())
-                .status("PENDING") // 초기 상태는 대기
+                .status("PENDING")
                 .build();
 
         CourseEntity savedCourse = courseRepository.save(course);
         return new CourseDto(savedCourse);
     }
 
-    // [헬퍼 메서드 1] 시간 중복 체크 (단순 문자열 일치로 체크, 필요시 파싱 로직 고도화 가능)
     private boolean isTimeOverlap(String time1, String time2) {
         return time1.equals(time2);
     }
 
-    // [헬퍼 메서드 2] 요일 중복 체크 (교집합 확인)
     private boolean isDayOverlap(String days1, String days2) {
-        // "월,수" vs "수,금" -> "수"가 겹치므로 true
         if (days1 == null || days2 == null) return false;
         List<String> d1 = Arrays.asList(days1.split(","));
         List<String> d2 = Arrays.asList(days2.split(","));
-        return !Collections.disjoint(d1, d2); // 공통 요소가 있으면 true
+        return !Collections.disjoint(d1, d2);
     }
 
     /**
-     * 1.2. 담당 강좌 목록 조회
+     * 1.2. 담당 강좌 목록 조회 (본인 것만 조회)
      */
     @Transactional(readOnly = true)
     public List<CourseDto> getMyCourses(Long teacherId) {
@@ -99,21 +94,16 @@ public class TeacherCourseService {
     }
 
     /**
-     * 1.3. 강좌 정보 수정 (본인 강좌 및 상태 확인)
+     * 1.3. 강좌 정보 수정 (소유권 검증 강화)
      */
     @Transactional
     public CourseDto updateCourse(Long teacherId, Long courseId, CourseUpdateDto updateDto) {
-        CourseEntity course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + courseId));
+        // [보안] ID 조회 시 teacherId도 같이 조건으로 넣어, 내 강좌가 아니면 아예 조회 안 됨
+        CourseEntity course = courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
+                .orElseThrow(() -> new SecurityException("본인의 강좌만 수정할 수 있습니다."));
 
-        // 소유권 확인
-        if (!course.getTeacher().getUserId().equals(teacherId)) {
-            throw new SecurityException("You do not have permission to update this course.");
-        }
-
-        // 상태 확인 (대기 또는 반려 상태만 수정 가능)
         if (!Arrays.asList("PENDING", "REJECTED").contains(course.getStatus())) {
-            throw new IllegalStateException("Only courses with PENDING or REJECTED status can be updated.");
+            throw new IllegalStateException("대기(PENDING) 또는 반려(REJECTED) 상태인 강좌만 수정할 수 있습니다.");
         }
 
         course.setCourseName(updateDto.getCourseName());
@@ -124,7 +114,6 @@ public class TeacherCourseService {
         course.setLocation(updateDto.getLocation());
         course.setCapacity(updateDto.getCapacity());
 
-        // 반려된 강좌를 수정하면 다시 대기 상태로 변경
         if ("REJECTED".equals(course.getStatus())) {
             course.setStatus("PENDING");
         }
@@ -134,12 +123,12 @@ public class TeacherCourseService {
     }
 
     /**
-     * [탭 1] 수강생 목록 조회
+     * [탭 1] 수강생 목록 조회 (소유권 검증 강화)
      */
     @Transactional(readOnly = true)
     public List<EnrolledStudentDto> getEnrolledStudents(Long teacherId, Long courseId) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to view this course's students."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         List<EnrollmentEntity> enrollments = enrollmentRepository.findByCourse_CourseIdAndStatus(courseId, "ACTIVE");
 
@@ -149,12 +138,12 @@ public class TeacherCourseService {
     }
 
     /**
-     * [탭 2] 출결 관리 - 조회
+     * [탭 2] 출결 관리 - 조회 (소유권 검증 강화)
      */
     @Transactional(readOnly = true)
     public List<AttendanceDto> getAttendanceByDate(Long teacherId, Long courseId, LocalDate classDate) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to view this course's attendance."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         List<EnrollmentEntity> enrollments = enrollmentRepository.findByCourse_CourseIdAndStatus(courseId, "ACTIVE");
         List<AttendanceEntity> attendances = attendanceRepository.findByClassDateAndEnrollment_Course_CourseId(classDate, courseId);
@@ -175,21 +164,25 @@ public class TeacherCourseService {
     }
 
     /**
-     * [탭 2] 출결 관리 - 기록
+     * [탭 2] 출결 관리 - 기록 (소유권 검증 강화)
      */
     @Transactional
     public void recordAttendance(Long teacherId, Long courseId, AttendanceUpdateDto updateDto) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to record attendance for this course."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         LocalDate classDate = updateDto.getClassDate();
 
+        // 디버깅 로그
+        System.out.println("출석 저장 요청: CourseId=" + courseId + ", Date=" + classDate + ", Students=" + updateDto.getStudents().size());
+
         for (AttendanceUpdateDto.StudentAttendanceDto studentDto : updateDto.getStudents()) {
             EnrollmentEntity enrollment = enrollmentRepository.findById(studentDto.getEnrollmentId())
-                    .orElseThrow(() -> new EntityNotFoundException("Enrollment not found with id: " + studentDto.getEnrollmentId()));
+                    .orElseThrow(() -> new EntityNotFoundException("수강 정보를 찾을 수 없습니다: " + studentDto.getEnrollmentId()));
 
+            // [보안] 해당 수강생이 이 강좌의 학생이 맞는지 이중 체크
             if (!enrollment.getCourse().getCourseId().equals(courseId)) {
-                throw new SecurityException("Enrollment id " + enrollment.getEnrollmentId() + " does not belong to course id " + courseId);
+                throw new SecurityException("잘못된 수강생 정보입니다. (이 강좌의 수강생이 아님)");
             }
 
             AttendanceEntity attendance = attendanceRepository
@@ -202,26 +195,27 @@ public class TeacherCourseService {
     }
 
     /**
-     * [탭 3] 공지사항 목록
+     * [탭 3] 공지사항 목록 (소유권 검증 강화)
      */
     @Transactional(readOnly = true)
     public List<NoticeDto> getCourseNotices(Long teacherId, Long courseId) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to view this course's notices."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         List<NoticeEntity> notices = noticeRepository.findByCourse_CourseId(courseId);
         return notices.stream().map(NoticeDto::new).collect(Collectors.toList());
     }
 
     /**
-     * [탭 3] 공지사항 생성
+     * [탭 3] 공지사항 생성 (소유권 검증 강화)
      */
     @Transactional
     public NoticeDto createCourseNotice(Long teacherId, Long courseId, NoticeCreateDto createDto) {
-        UserEntity teacher = userRepository.findById(teacherId)
-                .orElseThrow(() -> new EntityNotFoundException("Teacher not found with id: " + teacherId));
+        // [보안] 내 강좌인지 확인하고 객체 가져오기
         CourseEntity course = courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to create a notice for this course."));
+                .orElseThrow(() -> new SecurityException("이 강좌에 공지를 작성할 권한이 없습니다."));
+
+        UserEntity teacher = course.getTeacher(); // 위에서 검증했으므로 안전
 
         NoticeEntity notice = NoticeEntity.builder()
                 .author(teacher)
@@ -235,15 +229,15 @@ public class TeacherCourseService {
     }
 
     /**
-     * [탭 3] 공지사항 수정
+     * [탭 3] 공지사항 수정 (소유권 검증 강화)
      */
     @Transactional
     public NoticeDto updateCourseNotice(Long teacherId, Long courseId, Long noticeId, NoticeCreateDto updateDto) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to update notices for this course."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         NoticeEntity notice = noticeRepository.findByNoticeIdAndCourse_CourseId(noticeId, courseId)
-                .orElseThrow(() -> new EntityNotFoundException("Notice not found with id: " + noticeId + " for this course."));
+                .orElseThrow(() -> new EntityNotFoundException("해당 공지사항을 찾을 수 없거나 권한이 없습니다."));
 
         notice.setTitle(updateDto.getTitle());
         notice.setContent(updateDto.getContent());
@@ -253,49 +247,44 @@ public class TeacherCourseService {
     }
 
     /**
-     * [탭 3] 공지사항 삭제
+     * [탭 3] 공지사항 삭제 (소유권 검증 강화)
      */
     @Transactional
     public void deleteCourseNotice(Long teacherId, Long courseId, Long noticeId) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to delete notices for this course."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         NoticeEntity notice = noticeRepository.findByNoticeIdAndCourse_CourseId(noticeId, courseId)
-                .orElseThrow(() -> new EntityNotFoundException("Notice not found with id: " + noticeId + " for this course."));
+                .orElseThrow(() -> new EntityNotFoundException("해당 공지사항을 찾을 수 없거나 권한이 없습니다."));
 
         noticeRepository.delete(notice);
     }
 
     /**
-     * [탭 4] 설문조사 목록
+     * [탭 4] 설문조사 목록 (소유권 검증 강화)
      */
     @Transactional(readOnly = true)
     public List<SurveyListDto> getCourseSurveys(Long teacherId, Long courseId) {
-        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
-                .orElseThrow(() -> new SecurityException("You do not have permission to view this course's surveys."));
+        // [보안] 내 강좌인지 확인
+        validateCourseOwnership(courseId, teacherId);
 
         List<SurveyEntity> surveys = surveyRepository.findByCourse_CourseId(courseId);
-
-        // SurveyListDto 생성자 수정 (isSubmitted = false)
         return surveys.stream()
                 .map(survey -> new SurveyListDto(survey, false))
                 .collect(Collectors.toList());
     }
 
     /**
-     * [탭 4] 설문조사 생성
+     * [탭 4] 설문조사 생성 (소유권 검증 강화)
      */
     @Transactional
     public SurveyListDto createCourseSurvey(Long teacherId, Long courseId, SurveyCreateDto createDto) {
         UserEntity teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
 
-        CourseEntity course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-
-        if (!course.getTeacher().getUserId().equals(teacherId)) {
-            throw new SecurityException("You are not the owner of this course");
-        }
+        // [보안] 내 강좌인지 확인하고 객체 가져오기
+        CourseEntity course = courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
+                .orElseThrow(() -> new SecurityException("이 강좌에 설문을 생성할 권한이 없습니다."));
 
         SurveyEntity survey = SurveyEntity.builder()
                 .author(teacher)
@@ -317,8 +306,12 @@ public class TeacherCourseService {
         questions.forEach(survey::addQuestion);
 
         SurveyEntity savedSurvey = surveyRepository.save(survey);
-
-        // SurveyListDto 생성자 수정 (isSubmitted = false)
         return new SurveyListDto(savedSurvey, false);
+    }
+
+    // [공통 검증 메서드] 강좌 소유권 확인
+    private void validateCourseOwnership(Long courseId, Long teacherId) {
+        courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
+                .orElseThrow(() -> new SecurityException("이 강좌에 접근할 권한이 없습니다."));
     }
 }
