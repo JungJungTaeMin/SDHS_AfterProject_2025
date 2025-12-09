@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 @Transactional(readOnly = true)
 public class StudentService {
 
-    // [수정] 출석률 제한 조건을 60%로 완화
+    // 출석률 제한 60%
     private static final double MIN_ATTENDANCE_RATE = 60.0;
 
     private final CourseRepository courseRepository;
@@ -64,9 +64,9 @@ public class StudentService {
 
     @Transactional
     public void enrollInCourse(Long studentId, Long courseId) {
-        // 1. 출석률 자격 확인 (신입생 혜택 없음 -> 이력이 없으면 신청 불가)
+        // 1. 출석률 자격 확인
         if (!checkEnrollmentEligibility(studentId)) {
-            throw new IllegalStateException("이전 학기 출석률이 60% 미만(또는 수강 이력 없음)이어 수강 신청을 할 수 없습니다.");
+            throw new IllegalStateException("이전 학기 출석률이 60% 미만이어 수강 신청을 할 수 없습니다.");
         }
 
         UserEntity student = userRepository.findById(studentId)
@@ -94,11 +94,14 @@ public class StudentService {
         enrollmentRepository.save(enrollment);
     }
 
-    // [수정] 신입생 혜택 로직(isEmpty 체크) 완전 삭제
+    // [수정] 수강 이력이 없는 경우(신입생) true를 반환하도록 복구
     private boolean checkEnrollmentEligibility(Long studentId) {
-        // 기존에 있었던 "수강 이력이 없으면 true 반환" 로직을 제거했습니다.
-        // 따라서 수강 이력이 아예 없는 경우(신입생 등)는 attendanceRate가 0.0이 되어
-        // 60.0보다 작으므로 false(신청 불가)가 반환됩니다.
+        List<EnrollmentEntity> enrollments = enrollmentRepository.findByStudent_UserId(studentId);
+
+        // 이력이 아예 없으면 -> 최초 진입자이므로 수강 허용
+        if (enrollments.isEmpty()) {
+            return true;
+        }
 
         MyCoursesResponseDto myCourses = getMyCoursesAndAttendance(studentId);
         return myCourses.getOverallAttendanceRate() >= MIN_ATTENDANCE_RATE;
