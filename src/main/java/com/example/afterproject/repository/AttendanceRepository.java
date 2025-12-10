@@ -2,8 +2,6 @@ package com.example.afterproject.repository;
 
 import com.example.afterproject.entity.AttendanceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -17,7 +15,10 @@ public interface AttendanceRepository extends JpaRepository<AttendanceEntity, Lo
 
     Optional<AttendanceEntity> findByEnrollment_EnrollmentIdAndClassDate(Long enrollmentId, LocalDate classDate);
 
-    // [추가] 특정 수강 정보에 대한 모든 출결 상태 조회
-    @Query("SELECT a.status FROM AttendanceEntity a WHERE a.enrollment.enrollmentId = :enrollmentId")
-    List<String> findStatusByEnrollmentId(@Param("enrollmentId") Long enrollmentId);
+    // [기존] 상태만 조회 (삭제하거나 유지해도 됨)
+    // @Query("SELECT a.status FROM AttendanceEntity a WHERE a.enrollment.enrollmentId = :enrollmentId")
+    // List<String> findStatusByEnrollmentId(@Param("enrollmentId") Long enrollmentId);
+
+    // [추가] 상세 기록 조회 (날짜 내림차순)
+    List<AttendanceEntity> findByEnrollment_EnrollmentIdOrderByClassDateDesc(Long enrollmentId);
 }

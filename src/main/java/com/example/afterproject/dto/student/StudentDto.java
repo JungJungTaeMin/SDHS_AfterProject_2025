@@ -1,10 +1,13 @@
 package com.example.afterproject.dto.student;
 
+import com.example.afterproject.entity.AttendanceEntity;
 import com.example.afterproject.entity.CourseEntity;
 import com.example.afterproject.entity.EnrollmentEntity;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class StudentDto {
 
@@ -83,9 +86,7 @@ public class StudentDto {
 
         @Getter
         public static class MyCourseDto {
-            // [추가] 취소 요청을 위해 courseId 필드 필수 추가!
-            private final Long courseId;
-
+            private final Long courseId; // 수강 취소 등을 위해 ID 필수
             private final String courseName;
             private final String teacherName;
             private final String status;
@@ -94,20 +95,41 @@ public class StudentDto {
             private final long absentCount;
             private final long lateCount;
 
-            public MyCourseDto(EnrollmentEntity enrollment, List<String> attendanceRecords) {
-                // [추가] 엔티티에서 ID 꺼내오기
-                this.courseId = enrollment.getCourse().getCourseId();
+            // [추가] 날짜별 상세 기록 리스트
+            private final List<AttendanceLog> logs;
 
+            // 생성자 파라미터 변경: List<String> -> List<AttendanceEntity>
+            public MyCourseDto(EnrollmentEntity enrollment, List<AttendanceEntity> attendanceEntities) {
+                this.courseId = enrollment.getCourse().getCourseId();
                 this.courseName = enrollment.getCourse().getCourseName();
                 this.teacherName = enrollment.getCourse().getTeacher().getName();
                 this.status = enrollment.getStatus();
 
-                this.presentCount = attendanceRecords.stream().filter(r -> "PRESENT".equals(r)).count();
-                this.absentCount = attendanceRecords.stream().filter(r -> "ABSENT".equals(r)).count();
-                this.lateCount = attendanceRecords.stream().filter(r -> "LATE".equals(r)).count();
+                // [핵심] 엔티티 리스트를 로그 DTO 리스트로 변환
+                this.logs = attendanceEntities.stream()
+                        .map(AttendanceLog::new)
+                        .collect(Collectors.toList());
+
+                // 변환된 로그를 기반으로 통계 계산
+                this.presentCount = logs.stream().filter(l -> "PRESENT".equals(l.getStatus())).count();
+                this.absentCount = logs.stream().filter(l -> "ABSENT".equals(l.getStatus())).count();
+                this.lateCount = logs.stream().filter(l -> "LATE".equals(l.getStatus())).count();
 
                 long totalClasses = presentCount + absentCount + lateCount;
+                // 출석률 계산 (출석 + 지각) / 전체 * 100
                 this.attendanceRate = (totalClasses == 0) ? 0.0 : (double) (presentCount + lateCount) / totalClasses * 100;
+            }
+        }
+
+        // [추가] 내부 클래스: 날짜별 상세 기록 DTO
+        @Getter
+        public static class AttendanceLog {
+            private final LocalDate date;
+            private final String status; // PRESENT, ABSENT, LATE
+
+            public AttendanceLog(AttendanceEntity entity) {
+                this.date = entity.getClassDate();
+                this.status = entity.getStatus();
             }
         }
     }
