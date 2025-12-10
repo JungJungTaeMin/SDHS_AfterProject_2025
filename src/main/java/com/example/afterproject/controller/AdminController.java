@@ -8,9 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 관리자 기능 관련 API 요청을 처리하는 컨트롤러
- */
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor

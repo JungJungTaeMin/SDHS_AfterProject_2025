@@ -16,13 +16,11 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // 로그인
     @PostMapping("/login")
     public ResponseEntity<TokenResponseDto> login(@RequestBody LoginRequestDto requestDto) {
         return ResponseEntity.ok(authService.login(requestDto));
     }
 
-    // ▼▼▼ 회원가입 (새로 추가됨) ▼▼▼
     @PostMapping("/signup")
     public ResponseEntity<ResponseMessageDto> signup(@RequestBody SignupRequestDto requestDto) {
         authService.signup(requestDto);
