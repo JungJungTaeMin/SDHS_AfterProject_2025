@@ -1,0 +1,77 @@
+package com.example.afterproject.service;
+
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+@Service
+@RequiredArgsConstructor
+public class EmailService {
+
+    private final JavaMailSender mailSender;
+
+    // 인증 코드를 임시 저장할 저장소 (Key: 이메일, Value: 인증코드)
+    // *실무에서는 Redis를 쓰지만, 지금은 Map으로 충분합니다.
+    private final Map<String, String> verificationCodes = new HashMap<>();
+
+    // 1. 랜덤 문자열 생성 (길이 7, 영문+숫자)
+    public String createCode() {
+        int leftLimit = 48; // numeral '0'
+        int rightLimit = 122; // letter 'z'
+        int targetStringLength = 7;
+        Random random = new Random();
+
+        return random.ints(leftLimit, rightLimit + 1)
+                .filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
+                .limit(targetStringLength)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+    }
+
+    // 2. 이메일 보내기
+    public void sendEmail(String toEmail) {
+        String authCode = createCode(); // 7자리 코드 생성
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("본인의지메일@gmail.com"); // 보내는 사람
+            helper.setTo(toEmail);
+            helper.setSubject("[AfterProject] 회원가입 인증 코드입니다.");
+
+            String htmlContent = "<h1>인증 코드: <span style='color:blue'>" + authCode + "</span></h1>"
+                    + "<p>위 7자리 코드를 회원가입 화면에 입력해주세요.</p>";
+
+            helper.setText(htmlContent, true); // true = HTML 보냄
+
+            mailSender.send(message);
+
+            // 중요: 보낸 코드를 서버 메모리에 저장해둠 (나중에 비교하기 위해)
+            verificationCodes.put(toEmail, authCode);
+            System.out.println("인증 코드 발송 성공: " + toEmail + " -> " + authCode);
+
+        } catch (MessagingException e) {
+            throw new RuntimeException("메일 발송 실패", e);
+        }
+    }
+
+    // 3. 코드 검증 (사용자가 입력한 코드가 맞는지 확인)
+    public boolean verifyCode(String email, String inputCode) {
+        String savedCode = verificationCodes.get(email);
+
+        // 코드가 존재하고, 입력한 값과 일치하면 통과
+        if (savedCode != null && savedCode.equals(inputCode)) {
+            verificationCodes.remove(email); // 인증 성공하면 메모리에서 삭제 (재사용 방지)
+            return true;
+        }
+        return false;
+    }
+}
