@@ -37,9 +37,9 @@ public class TeacherCourseService {
         UserEntity teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new EntityNotFoundException("Teacher not found with id: " + teacherId));
 
-        // [수정] 입력값에서 앞뒤 공백 제거 (Trim)
+        // [수정 1] 입력값에서 앞뒤 공백 제거 (Trim) - "206 " 같은 오류 방지
         String cleanLocation = createDto.getLocation().trim();
-        System.out.println("DEBUG: 입력된 강의실 = [" + cleanLocation + "]"); // 로그로 확인
+        System.out.println("DEBUG: 입력된 강의실 = [" + cleanLocation + "]");
 
         // 1. 강의실 유효성 검사
         if (!ALLOWED_ROOMS.contains(cleanLocation)) {
@@ -83,21 +83,31 @@ public class TeacherCourseService {
         return !Collections.disjoint(d1, d2);
     }
 
-    // =================================================================
-    // ▼ 아래는 기존 코드와 동일합니다. (덮어쓰기 하셔도 문제 없습니다) ▼
-    // =================================================================
-
+    /**
+     * 1.2. 담당 강좌 목록 조회 (본인 것만 조회 + 수강 인원 계산)
+     */
     @Transactional(readOnly = true)
     public List<CourseDto> getMyCourses(Long teacherId) {
         if (!userRepository.existsById(teacherId)) {
             throw new EntityNotFoundException("Teacher not found with id: " + teacherId);
         }
+
         List<CourseEntity> courses = courseRepository.findByTeacher_UserId(teacherId);
+
+        // [수정 2] 실제 수강 인원(Active 상태)을 DB에서 세어서 DTO에 주입
         return courses.stream()
-                .map(CourseDto::new)
+                .map(course -> {
+                    CourseDto dto = new CourseDto(course);
+                    long count = enrollmentRepository.countByCourse_CourseIdAndStatus(course.getCourseId(), "ACTIVE");
+                    dto.setCurrentEnrollmentCount(count); // 계산된 인원수 설정
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 1.3. 강좌 정보 수정 (소유권 검증 강화)
+     */
     @Transactional
     public CourseDto updateCourse(Long teacherId, Long courseId, CourseUpdateDto updateDto) {
         CourseEntity course = courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -123,6 +133,9 @@ public class TeacherCourseService {
         return new CourseDto(updatedCourse);
     }
 
+    /**
+     * [탭 1] 수강생 목록 조회 (소유권 검증 강화)
+     */
     @Transactional(readOnly = true)
     public List<EnrolledStudentDto> getEnrolledStudents(Long teacherId, Long courseId) {
         validateCourseOwnership(courseId, teacherId);
@@ -132,6 +145,9 @@ public class TeacherCourseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [탭 2] 출결 관리 - 조회 (소유권 검증 강화)
+     */
     @Transactional(readOnly = true)
     public List<AttendanceDto> getAttendanceByDate(Long teacherId, Long courseId, LocalDate classDate) {
         validateCourseOwnership(courseId, teacherId);
@@ -153,6 +169,9 @@ public class TeacherCourseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [탭 2] 출결 관리 - 기록 (소유권 검증 강화)
+     */
     @Transactional
     public void recordAttendance(Long teacherId, Long courseId, AttendanceUpdateDto updateDto) {
         validateCourseOwnership(courseId, teacherId);
@@ -175,6 +194,9 @@ public class TeacherCourseService {
         }
     }
 
+    /**
+     * [탭 3] 공지사항 목록 (소유권 검증 강화)
+     */
     @Transactional(readOnly = true)
     public List<NoticeDto> getCourseNotices(Long teacherId, Long courseId) {
         validateCourseOwnership(courseId, teacherId);
@@ -182,6 +204,9 @@ public class TeacherCourseService {
         return notices.stream().map(NoticeDto::new).collect(Collectors.toList());
     }
 
+    /**
+     * [탭 3] 공지사항 생성 (소유권 검증 강화)
+     */
     @Transactional
     public NoticeDto createCourseNotice(Long teacherId, Long courseId, NoticeCreateDto createDto) {
         CourseEntity course = courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
@@ -199,6 +224,9 @@ public class TeacherCourseService {
         return new NoticeDto(savedNotice);
     }
 
+    /**
+     * [탭 3] 공지사항 수정 (소유권 검증 강화)
+     */
     @Transactional
     public NoticeDto updateCourseNotice(Long teacherId, Long courseId, Long noticeId, NoticeCreateDto updateDto) {
         validateCourseOwnership(courseId, teacherId);
@@ -212,6 +240,9 @@ public class TeacherCourseService {
         return new NoticeDto(updatedNotice);
     }
 
+    /**
+     * [탭 3] 공지사항 삭제 (소유권 검증 강화)
+     */
     @Transactional
     public void deleteCourseNotice(Long teacherId, Long courseId, Long noticeId) {
         validateCourseOwnership(courseId, teacherId);
@@ -220,6 +251,9 @@ public class TeacherCourseService {
         noticeRepository.delete(notice);
     }
 
+    /**
+     * [탭 4] 설문조사 목록 (소유권 검증 강화)
+     */
     @Transactional(readOnly = true)
     public List<SurveyListDto> getCourseSurveys(Long teacherId, Long courseId) {
         validateCourseOwnership(courseId, teacherId);
@@ -229,6 +263,9 @@ public class TeacherCourseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [탭 4] 설문조사 생성 (소유권 검증 강화)
+     */
     @Transactional
     public SurveyListDto createCourseSurvey(Long teacherId, Long courseId, SurveyCreateDto createDto) {
         UserEntity teacher = userRepository.findById(teacherId)
@@ -259,6 +296,7 @@ public class TeacherCourseService {
         return new SurveyListDto(savedSurvey, false);
     }
 
+    // [공통 검증 메서드] 강좌 소유권 확인
     private void validateCourseOwnership(Long courseId, Long teacherId) {
         courseRepository.findByCourseIdAndTeacher_UserId(courseId, teacherId)
                 .orElseThrow(() -> new SecurityException("이 강좌에 접근할 권한이 없습니다."));

@@ -26,7 +26,9 @@ public class AdminService {
     private final SurveyRepository surveyRepository;
 
 
+    // =====================================================================
     // 4.1. 사용자 통합 관리
+    // =====================================================================
 
     @Transactional(readOnly = true)
     public List<UserResponseDto> getAllUsers(String role, String name) {
@@ -51,15 +53,16 @@ public class AdminService {
     }
 
     public void deleteUser(Long userId) {
-        // [오류 수정] findById는 Optional<UserEntity>를 반환하므로 existsById로 변경
         if (!userRepository.existsById(userId)) {
             throw new EntityNotFoundException("사용자를 찾을 수 없습니다. id: " + userId);
         }
-        // TODO: 사용자와 연관된 데이터(강좌, 수강신청 등) 처리 로직 필요
+        // TODO: 사용자와 연관된 데이터(강좌, 수강신청 등) 처리 로직 필요 시 추가
         userRepository.deleteById(userId);
     }
 
+    // =====================================================================
     // 4.2. 강좌 운영 관리
+    // =====================================================================
 
     @Transactional(readOnly = true)
     public List<CourseResponseDto> getPendingCourses() {
@@ -87,6 +90,27 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
+    // ▼ [추가된 기능] 일괄 승인 기능
+    @Transactional
+    public void approveAllPendingCourses() {
+        // 1. 대기 중인 강좌 모두 찾기
+        List<CourseEntity> pendingCourses = courseRepository.findByStatus("PENDING");
+
+        if (pendingCourses.isEmpty()) {
+            // 대기 중인 게 없으면 그냥 종료하거나 에러 메시지 (여기서는 조용히 넘김)
+            return;
+        }
+
+        // 2. 하나씩 승인 상태로 변경
+        for (CourseEntity course : pendingCourses) {
+            course.setStatus("APPROVED");
+        }
+
+        // 3. 변경사항 저장
+        courseRepository.saveAll(pendingCourses);
+        System.out.println("총 " + pendingCourses.size() + "건의 강좌가 일괄 승인되었습니다.");
+    }
+
     public void enrollStudent(Long courseId, Long studentId) {
         UserEntity student = userRepository.findById(studentId)
                 .orElseThrow(() -> new EntityNotFoundException("학생을 찾을 수 없습니다. id: " + studentId));
@@ -97,7 +121,6 @@ public class AdminService {
             throw new IllegalArgumentException("학생 역할의 사용자만 수강 신청할 수 있습니다.");
         }
 
-        // [오류 수정] DB 호환성 문제를 피하기 위해 findBy... 와 isPresent() 사용
         if (enrollmentRepository.findByStudent_UserIdAndCourse_CourseId(studentId, courseId).isPresent()) {
             throw new IllegalStateException("이미 수강 신청된 학생입니다.");
         }
@@ -117,7 +140,9 @@ public class AdminService {
     }
 
 
+    // =====================================================================
     // 4.3. 시스템 소통 관리
+    // =====================================================================
 
     public NoticeResponseDto createGlobalNotice(Long adminId, NoticeCreateDto noticeCreateDto) {
         UserEntity admin = userRepository.findById(adminId)

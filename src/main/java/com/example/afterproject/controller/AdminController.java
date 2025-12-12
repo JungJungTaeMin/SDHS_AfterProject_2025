@@ -1,9 +1,11 @@
 package com.example.afterproject.controller;
 
 import com.example.afterproject.dto.admin.*;
+import com.example.afterproject.security.CustomUserDetails; // [추가]
 import com.example.afterproject.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal; // [추가]
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -87,6 +89,20 @@ public class AdminController {
         return ResponseEntity.ok(updatedCourse);
     }
 
+    // ▼ [추가된 기능] 일괄 승인 API
+    /**
+     * 대기 중인 모든 강좌 일괄 승인
+     */
+    @PutMapping("/courses/approve-all")
+    public ResponseEntity<ResponseMessageDto> approveAllCourses() {
+        try {
+            adminService.approveAllPendingCourses();
+            return ResponseEntity.ok(new ResponseMessageDto("모든 대기 강좌가 성공적으로 승인되었습니다."));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.ok(new ResponseMessageDto(e.getMessage()));
+        }
+    }
+
     /**
      * 전체 강좌 목록 모니터링
      * @return 전체 강좌 목록
@@ -135,9 +151,11 @@ public class AdminController {
      * @return 생성된 공지 정보
      */
     @PostMapping("/notices")
-    public ResponseEntity<NoticeResponseDto> createGlobalNotice(@RequestBody NoticeCreateDto noticeCreateDto) {
-        // TODO: 현재 로그인한 관리자 ID 가져오기
-        Long adminId = 1L;
+    public ResponseEntity<NoticeResponseDto> createGlobalNotice(
+            @AuthenticationPrincipal CustomUserDetails userDetails, // [수정] 실제 로그인한 관리자 정보 주입
+            @RequestBody NoticeCreateDto noticeCreateDto) {
+
+        Long adminId = userDetails.getUserId(); // 실제 ID 사용
         NoticeResponseDto notice = adminService.createGlobalNotice(adminId, noticeCreateDto);
         return ResponseEntity.status(201).body(notice);
     }
@@ -148,11 +166,12 @@ public class AdminController {
      * @return 생성된 설문 정보
      */
     @PostMapping("/surveys")
-    public ResponseEntity<SurveyResponseDto> createGlobalSurvey(@RequestBody SurveyCreateDto surveyCreateDto) {
-        // TODO: 현재 로그인한 관리자 ID 가져오기
-        Long adminId = 1L;
+    public ResponseEntity<SurveyResponseDto> createGlobalSurvey(
+            @AuthenticationPrincipal CustomUserDetails userDetails, // [수정] 실제 로그인한 관리자 정보 주입
+            @RequestBody SurveyCreateDto surveyCreateDto) {
+
+        Long adminId = userDetails.getUserId(); // 실제 ID 사용
         SurveyResponseDto survey = adminService.createGlobalSurvey(adminId, surveyCreateDto);
         return ResponseEntity.status(201).body(survey);
-
     }
 }
