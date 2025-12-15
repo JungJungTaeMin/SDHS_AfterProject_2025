@@ -3,7 +3,6 @@ package com.example.afterproject.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod; // [추가] 오류 해결을 위한 import
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -36,16 +35,16 @@ public class SecurityConfig {
                         // 1. 인증 없이 접근 허용
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // 2. 관리자 전용 권한
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // 2. 관리자 전용 (hasRole 대신 hasAuthority 사용)
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
-                        // 3. 교사 전용 권한
-                        .requestMatchers("/api/teachers/**").hasRole("TEACHER")
+                        // 3. 교사 전용
+                        .requestMatchers("/api/teachers/**").hasAuthority("TEACHER")
 
-                        // 4. 학생 전용 권한
-                        .requestMatchers("/api/students/**").hasRole("STUDENT")
+                        // 4. 학생 전용
+                        .requestMatchers("/api/students/**").hasAuthority("STUDENT")
 
-                        // 5. 그 외 모든 요청은 인증만 되면 접근 가능
+                        // 5. 그 외 모든 요청은 인증만 되면 통과
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);

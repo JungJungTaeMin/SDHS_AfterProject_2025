@@ -24,7 +24,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-
+        // [수정됨] "ROLE_" 안 붙임! DB에 있는 "TEACHER" 그대로 사용
         return Collections.singletonList(new SimpleGrantedAuthority(userEntity.getRole()));
     }
 
