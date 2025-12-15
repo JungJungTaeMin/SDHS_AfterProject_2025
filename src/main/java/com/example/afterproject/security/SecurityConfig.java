@@ -32,19 +32,19 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. 인증 없이 접근 허용
+                        // ▼ [핵심] 이메일 인증 주소(/api/auth/...)는 로그인 없이도 들어갈 수 있어야 함!
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // 2. 관리자 전용 (hasRole 대신 hasAuthority 사용)
+                        // 2. 관리자
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
-                        // 3. 교사 전용
+                        // 3. 선생님
                         .requestMatchers("/api/teachers/**").hasAuthority("TEACHER")
 
-                        // 4. 학생 전용
+                        // 4. 학생
                         .requestMatchers("/api/students/**").hasAuthority("STUDENT")
 
-                        // 5. 그 외 모든 요청은 인증만 되면 통과
+                        // 5. 나머지는 로그인 필수
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
@@ -60,11 +60,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 프론트엔드 도메인 허용
+        // 프론트엔드 주소 허용
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
+                "https://listings-editing-postings-characterization.trycloudflare.com", // 현재 사용중인 터널 주소
                 "https://after-school-m.vercel.app",
                 "https://sdhsafterproject2025-production.up.railway.app",
                 "https://after-school-nn11tn7vr-tlscksgurs-projects.vercel.app"
