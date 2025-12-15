@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth") // 기본 주소
+@RequestMapping("/api/auth") // 공통 주소
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -22,14 +22,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(requestDto));
     }
 
-    // ▼▼▼ [여기가 핵심입니다!] ▼▼▼
-    // 프론트엔드가 "/api/auth/email/send-code" 로 요청하므로 여기도 똑같이 맞춰야 합니다.
+    // ▼▼▼ [여기가 404 해결의 핵심!] ▼▼▼
+    // 프론트엔드가 "/api/auth/email/send-code"로 요청하므로, 여기도 똑같이 "/email/send-code"여야 함
     @PostMapping("/email/send-code")
     public ResponseEntity<ResponseMessageDto> sendVerificationCode(@RequestParam String email) {
-
-        // 이메일 발송 서비스 호출
         emailService.sendEmail(email);
-
         return ResponseEntity.ok(new ResponseMessageDto("인증 코드가 발송되었습니다."));
     }
     // ▲▲▲ ----------------------- ▲▲▲
@@ -37,8 +34,7 @@ public class AuthController {
     // 2. 회원가입
     @PostMapping("/signup")
     public ResponseEntity<ResponseMessageDto> signup(@RequestBody SignupRequestDto requestDto) {
-
-        // 인증 코드 검증
+        // 인증 코드 확인
         boolean isVerified = emailService.verifyCode(requestDto.getEmail(), requestDto.getVerificationCode());
 
         if (!isVerified) {

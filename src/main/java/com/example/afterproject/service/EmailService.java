@@ -43,7 +43,7 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom("본인지메일@gmail.com"); // 설정한 이메일과 똑같이 적으세요!
+            helper.setFrom("sdh240216@sdh.hs.kr"); // 설정한 이메일과 똑같이 적으세요!
             helper.setTo(toEmail);
             helper.setSubject("[방과후 시스템] 회원가입 인증 코드");
 
