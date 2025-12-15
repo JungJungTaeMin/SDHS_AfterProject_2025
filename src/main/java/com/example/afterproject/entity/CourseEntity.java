@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.time.LocalDate; // [추가]
 
 @Entity
 @Table(name = "AFTER_COURSES")
@@ -17,7 +18,7 @@ import java.time.Instant;
 public class CourseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL용 변경
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "course_id")
     private Long courseId;
 
@@ -50,12 +51,22 @@ public class CourseEntity {
     @Column(name = "status", nullable = false)
     private String status;
 
+    // ▼ [추가된 필드] 분기, 종료 날짜
+    @Column(name = "quarter")
+    private Integer quarter; // 1, 2, 3, 4
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+    // ▲ -----------------------
+
     @CreationTimestamp
     @Column(name = "created_at")
     private Instant createdAt;
 
     @Builder
-    public CourseEntity(UserEntity teacher, String courseName, String category, String description, String courseDays, String courseTime, String location, int capacity, String status) {
+    public CourseEntity(UserEntity teacher, String courseName, String category, String description,
+                        String courseDays, String courseTime, String location, int capacity,
+                        String status, Integer quarter, LocalDate endDate) { // 생성자에도 추가
         this.teacher = teacher;
         this.courseName = courseName;
         this.category = category;
@@ -65,5 +76,7 @@ public class CourseEntity {
         this.location = location;
         this.capacity = capacity;
         this.status = status;
+        this.quarter = quarter; // 추가
+        this.endDate = endDate; // 추가
     }
 }

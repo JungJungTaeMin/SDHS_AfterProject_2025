@@ -3,12 +3,13 @@ package com.example.afterproject.dto;
 import com.example.afterproject.entity.CourseEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter; // [추가]
+import lombok.Setter;
 
 import java.time.Instant;
+import java.time.LocalDate; // 추가
 
 @Getter
-@Setter // [추가] 이제 외부에서 값을 수정할 수 있습니다!
+@Setter
 @NoArgsConstructor
 public class CourseDto {
     private Long courseId;
@@ -22,6 +23,10 @@ public class CourseDto {
     private long currentEnrollmentCount;
     private Instant createdAt;
 
+    // ▼ [추가]
+    private Integer quarter;
+    private LocalDate endDate;
+
     public CourseDto(CourseEntity course) {
         this.courseId = course.getCourseId();
         this.courseName = course.getCourseName();
@@ -33,5 +38,10 @@ public class CourseDto {
         this.capacity = course.getCapacity();
         this.createdAt = course.getCreatedAt();
 
+        // ▼ [추가]
+        this.quarter = course.getQuarter();
+        this.endDate = course.getEndDate();
+
+        this.currentEnrollmentCount = 0;
     }
 }
