@@ -28,3 +28,4 @@ public class AttendanceUpdateDto {
         private String status; // "PRESENT", "ABSENT", "LATE"
     }
 }
+
