@@ -72,9 +72,11 @@ public class EmailService {
 
         // 저장된 코드가 있고 && 입력한 값과 일치하면 통과
         if (savedCode != null && savedCode.equals(inputCode)) {
-            verificationCodes.remove(email); // 인증 성공하면 메모리에서 삭제 (재사용 방지)
+            // ▼▼▼ [수정됨] 인증에 성공해도 바로 삭제하지 않음 (회원가입 요청 시 재검증 필요) ▼▼▼
+            // verificationCodes.remove(email);
+            // ▲▲▲ --------------------------------------------------------------------- ▲▲▲
             return true;
         }
         return false;
     }
-}
+}혁
