@@ -24,22 +24,27 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(requestDto));
     }
 
-    // 2. 이메일 인증 코드 "발송" (프론트가 /send-verification 으로 요청함)
+    // ▼▼▼ [수정된 부분] ▼▼▼
+    // @RequestParam을 @RequestBody Map으로 변경하여 JSON 데이터를 받을 수 있게 수정
     @PostMapping("/send-verification")
-    public ResponseEntity<ResponseMessageDto> sendVerificationCode(@RequestParam String email) {
+    public ResponseEntity<ResponseMessageDto> sendVerificationCode(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity.badRequest().body(new ResponseMessageDto("이메일이 입력되지 않았습니다."));
+        }
+
         emailService.sendEmail(email);
         return ResponseEntity.ok(new ResponseMessageDto("인증 코드가 발송되었습니다."));
     }
+    // ▲▲▲ ---------------- ▲▲▲
 
-    // ▼▼▼ [여기가 핵심!] ▼▼▼
-    // 프론트엔드가 "인증 확인"을 하려고 하는데, 주소를 "/email/send-code"로 보내고 있습니다.
-    // 그래서 주소는 "/email/send-code"로 받고, 실제 기능은 "검증(Verify)"을 수행하도록 맞췄습니다.
+    // 2. 인증 코드 검증 (프론트엔드 요청 경로 대응)
     @PostMapping("/email/send-code")
     public ResponseEntity<ResponseMessageDto> verifyCodeHack(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String code = request.get("code");
 
-        // 인증 코드 검증 로직 실행
         boolean isVerified = emailService.verifyCode(email, code);
 
         if (isVerified) {
@@ -48,12 +53,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new ResponseMessageDto("인증 코드가 올바르지 않습니다."));
         }
     }
-    // ▲▲▲ ----------------------- ▲▲▲
 
     // 3. 회원가입
     @PostMapping("/signup")
     public ResponseEntity<ResponseMessageDto> signup(@RequestBody SignupRequestDto requestDto) {
-        // 회원가입 시 최종 검증
         boolean isVerified = emailService.verifyCode(requestDto.getEmail(), requestDto.getVerificationCode());
 
         if (!isVerified) {
